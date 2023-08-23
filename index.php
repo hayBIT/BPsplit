@@ -26,92 +26,95 @@ if (!file_exists($processed_dir)) {
 
 $attachments = []; // Array für die gesammelten Anhänge
 
-foreach (glob($pdfs_dir . '*.pdf') as $pdf_file) {
-    $filename = basename($pdf_file);
+$iterator = new RecursiveIteratorIterator(new RecursiveDirectoryIterator($pdfs_dir));
+foreach ($iterator as $pdf_file) {
+    if ($pdf_file->isFile() && strtolower($pdf_file->getExtension()) === 'pdf') {
+        $filename = $pdf_file->getBasename();
 
-    $processed = false;
+        $processed = false;
 
-    foreach ($recipient_emails as $key => $recipient_email) {
-        if (strpos($filename, $key) !== false) {
-            $pdf = new Fpdi();
-            $page_count = $pdf->setSourceFile($pdf_file);
-
-            $output_file1 = $output_dir . str_replace('.pdf', '_Barmenia.pdf', $filename);
-            $pdf->AddPage();
-            $tplIdx = $pdf->importPage(1);
-            $pdf->useTemplate($tplIdx);
-            $pdf->AddPage();
-            $tplIdx = $pdf->importPage(2);
-            $pdf->useTemplate($tplIdx);
-            $pdf->Output($output_file1, 'F');
-            $pdf->Close();
-
-            $pdf = new Fpdi();
-            $page_count = $pdf->setSourceFile($pdf_file);
-
-            $output_file2 = $output_dir . str_replace('.pdf', '_UKV.pdf', $filename);
-            $pdf->AddPage();
-            for ($i = 3; $i <= 10; $i++) {
-                $tplIdx = $pdf->importPage($i);
-                $pdf->useTemplate($tplIdx);
-                if ($i != 10) {
-                    $pdf->AddPage();
-                }
-            }
-            $pdf->Output($output_file2, 'F');
-            $pdf->Close();
-
-            // Prüfe, ob der Dateiname "900" oder "1100" enthält
-            if (strpos($filename, '900') !== false || strpos($filename, '1100') !== false) {
-                $output_file3 = $output_dir . str_replace('.pdf', '_RuV.pdf', $filename);
+        foreach ($recipient_emails as $key => $recipient_email) {
+            if (strpos($filename, $key) !== false) {
                 $pdf = new Fpdi();
-                $page_count = $pdf->setSourceFile($pdf_file);
+                $page_count = $pdf->setSourceFile($pdf_file->getPathname());
 
+                $output_file1 = $output_dir . str_replace('.pdf', '_Barmenia.pdf', $filename);
                 $pdf->AddPage();
-                for ($i = 12; $i <= 20; $i++) {
+                $tplIdx = $pdf->importPage(1);
+                $pdf->useTemplate($tplIdx);
+                $pdf->AddPage();
+                $tplIdx = $pdf->importPage(2);
+                $pdf->useTemplate($tplIdx);
+                $pdf->Output($output_file1, 'F');
+                $pdf->Close();
+
+                $pdf = new Fpdi();
+                $page_count = $pdf->setSourceFile($pdf_file->getPathname());
+
+                $output_file2 = $output_dir . str_replace('.pdf', '_UKV.pdf', $filename);
+                $pdf->AddPage();
+                for ($i = 3; $i <= 10; $i++) {
                     $tplIdx = $pdf->importPage($i);
                     $pdf->useTemplate($tplIdx);
-                    if ($i != 20) {
+                    if ($i != 10) {
                         $pdf->AddPage();
                     }
                 }
-                $pdf->Output($output_file3, 'F');
+                $pdf->Output($output_file2, 'F');
                 $pdf->Close();
 
-                // Verschiebe die Ausgabedatei für Seiten 12-20 in den Ordner "fertig"
-                rename($output_file3, $finished_dir . basename($output_file3));
+                // Prüfe, ob der Dateiname "900" oder "1100" enthält
+                if (strpos($filename, '900') !== false || strpos($filename, '1100') !== false) {
+                    $output_file3 = $output_dir . str_replace('.pdf', '_RuV.pdf', $filename);
+                    $pdf = new Fpdi();
+                    $page_count = $pdf->setSourceFile($pdf_file->getPathname());
 
-                // Füge die Datei für Seiten 12-20 den Anhängen hinzu
-                $attachments[] = $finished_dir . basename($output_file3);
+                    $pdf->AddPage();
+                    for ($i = 12; $i <= 20; $i++) {
+                        $tplIdx = $pdf->importPage($i);
+                        $pdf->useTemplate($tplIdx);
+                        if ($i != 20) {
+                            $pdf->AddPage();
+                        }
+                    }
+                    $pdf->Output($output_file3, 'F');
+                    $pdf->Close();
+
+                    // Verschiebe die Ausgabedatei für Seiten 12-20 in den Ordner "fertig"
+                    rename($output_file3, $finished_dir . basename($output_file3));
+
+                    // Füge die Datei für Seiten 12-20 den Anhängen hinzu
+                    $attachments[] = $finished_dir . basename($output_file3);
+                }
+
+                // Verschiebe die Ausgabedateien für Seiten 1-2 und 3-10 in den Ordner "fertig"
+                rename($output_file1, $finished_dir . basename($output_file1));
+                rename($output_file2, $finished_dir . basename($output_file2));
+
+                // Füge die Dateien für Seiten 1-2 und 3-10 den Anhängen hinzu
+                $attachments[] = $finished_dir . basename($output_file1);
+                $attachments[] = $finished_dir . basename($output_file2);
+
+                // Verschiebe die verarbeiteten Ausgangsdateien in den Ordner "processed"
+                $processed_path = $processed_dir . basename($pdf_file->getPathname());
+                $i = 1;
+
+                while (file_exists($processed_path)) {
+                    $processed_path = $processed_dir . str_replace('.pdf', "_{$i}.pdf", $filename);
+                    $i++;
+                }
+
+                rename($pdf_file->getPathname(), $processed_path);
+
+                $processed = true;
             }
-
-            // Verschiebe die Ausgabedateien für Seiten 1-2 und 3-10 in den Ordner "fertig"
-            rename($output_file1, $finished_dir . basename($output_file1));
-            rename($output_file2, $finished_dir . basename($output_file2));
-
-            // Füge die Dateien für Seiten 1-2 und 3-10 den Anhängen hinzu
-            $attachments[] = $finished_dir . basename($output_file1);
-            $attachments[] = $finished_dir . basename($output_file2);
-
-            // Verschiebe die verarbeiteten Ausgangsdateien in den Ordner "processed"
-            $processed_path = $processed_dir . basename($pdf_file);
-            $i = 1;
-
-            while (file_exists($processed_path)) {
-                $processed_path = $processed_dir . str_replace('.pdf', "_{$i}.pdf", $filename);
-                $i++;
-            }
-
-            rename($pdf_file, $processed_path);
-
-            $processed = true;
         }
-    }
 
-    // Überprüfe, ob Anhänge vorhanden sind, die versendet werden müssen
-    if ($processed && !empty($attachments)) {
-        sendEmail($recipient_email, $attachments, $filename);
-        $attachments = []; // Leere das Array für den nächsten Durchlauf
+        // Überprüfe, ob Anhänge vorhanden sind, die versendet werden müssen
+        if ($processed && !empty($attachments)) {
+            sendEmail($recipient_email, $attachments, $filename);
+            $attachments = []; // Leere das Array für den nächsten Durchlauf
+        }
     }
 }
 
