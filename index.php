@@ -110,12 +110,12 @@ foreach (glob($pdfs_dir . '*.pdf') as $pdf_file) {
 
     // Überprüfe, ob Anhänge vorhanden sind, die versendet werden müssen
     if ($processed && !empty($attachments)) {
-        sendEmail($recipient_email, $attachments);
+        sendEmail($recipient_email, $attachments, $filename);
         $attachments = []; // Leere das Array für den nächsten Durchlauf
     }
 }
 
-function sendEmail($recipient, $attachments) {
+function sendEmail($recipient, $attachments, $filename) {
     global $config;
 
     $mail = new PHPMailer(true);
@@ -135,7 +135,7 @@ function sendEmail($recipient, $attachments) {
             $mail->addAttachment($attachmentPath);
         }
 
-        $mail->Subject = 'PDF Attachments';
+        $mail->Subject = 'PDF Attachments - ' . pathinfo($filename, PATHINFO_FILENAME);
         $mail->Body = 'Please find the attached PDF files.';
 
         $mail->send();
