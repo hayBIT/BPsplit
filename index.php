@@ -29,6 +29,8 @@ $attachments = []; // Array für die gesammelten Anhänge
 foreach (glob($pdfs_dir . '*.pdf') as $pdf_file) {
     $filename = basename($pdf_file);
 
+    $processed = false;
+
     foreach ($recipient_emails as $key => $recipient_email) {
         if (strpos($filename, $key) !== false) {
             $pdf = new Fpdi();
@@ -101,13 +103,16 @@ foreach (glob($pdfs_dir . '*.pdf') as $pdf_file) {
             }
 
             rename($pdf_file, $processed_path);
+
+            $processed = true;
         }
     }
-}
 
-// Überprüfe, ob Anhänge vorhanden sind, die versendet werden müssen
-if (!empty($attachments)) {
-    sendEmail($recipient_email, $attachments);
+    // Überprüfe, ob Anhänge vorhanden sind, die versendet werden müssen
+    if ($processed && !empty($attachments)) {
+        sendEmail($recipient_email, $attachments);
+        $attachments = []; // Leere das Array für den nächsten Durchlauf
+    }
 }
 
 function sendEmail($recipient, $attachments) {
