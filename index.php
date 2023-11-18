@@ -64,7 +64,7 @@ foreach ($iterator as $pdf_file) {
                 $pdf->Close();
 
                 // Prüfe, ob der Dateiname "900" oder "1100" enthält
-                if (strpos($filename, '900') !== false || strpos($filename, '1100') !== false) {
+                if (strpos($filename, 'BrillenPlan900') !== false || strpos($filename, 'BrillenPlan1100') !== false) {
                     $output_file3 = $output_dir . str_replace('.pdf', '_RuV.pdf', $filename);
                     $pdf = new Fpdi();
                     $page_count = $pdf->setSourceFile($pdf_file->getPathname());
